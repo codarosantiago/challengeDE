@@ -1,32 +1,44 @@
-from typing import List, Tuple
 import datetime
-import json
-from collections import defaultdict, Counter
+import orjson
+from collections import Counter
+from typing import List, Tuple
 
 def q1_memory(file_path: str) -> List[Tuple[datetime.date, str]]:
-    # Step 1: Initialize counters
+    """
+    Procesa un archivo de tweets en formato JSON para encontrar las 10 fechas
+    con más tweets y el usuario con más tweets en cada una de esas fechas.
+
+    La función esta optimizada para ser eficiente en el uso de la memoria.
+
+    Args:
+        file_path (str): Ruta al archivo que contiene los datos de los tweets.
+
+    Returns:
+        List[Tuple[datetime.date, str]]: Una lista de tuplas donde cada tupla contiene 
+                                         una fecha y el nombre de usuario con más tweets en esa fecha.
+    """
     date_tweet_count = Counter()
-    date_user_count = defaultdict(Counter)
+    date_user_count = {}
     
-    # Step 2: Read and process the file line-by-line
-    with open(file_path, 'r') as file:
+    def process_tweet(tweet):
+        date = datetime.datetime.strptime(tweet['date'][:10], '%Y-%m-%d').date()
+        username = tweet['user']['username']
+        
+        date_tweet_count[date] += 1
+        if date not in date_user_count:
+            date_user_count[date] = Counter()
+        date_user_count[date][username] += 1
+    
+    with open(file_path, 'rb') as file:
         for line in file:
-            tweet = json.loads(line.strip())
-            
-            date_str = tweet['date'][:10]
-            date = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
-            username = tweet['user']['username']
-            
-            date_tweet_count[date] += 1
-            date_user_count[date][username] += 1
+            tweet = orjson.loads(line)
+            process_tweet(tweet)
     
-    # Step 3: Find the top 10 dates with the most tweets
     top_10_dates = date_tweet_count.most_common(10)
     
-    # Step 4: Find the user with the most publications for each top date
-    result = []
-    for date, _ in top_10_dates:
-        top_user = date_user_count[date].most_common(1)[0][0]
-        result.append((date, top_user))
+    result = [
+        (date, date_user_count[date].most_common(1)[0][0])
+        for date, _ in top_10_dates
+    ]
     
     return result
